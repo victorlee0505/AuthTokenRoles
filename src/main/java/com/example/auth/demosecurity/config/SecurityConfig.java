@@ -2,16 +2,19 @@ package com.example.auth.demosecurity.config;
 
 import java.util.Arrays;
 
+import com.auth0.spring.security.api.JwtWebSecurityConfigurer;
+import com.example.auth.demosecurity.auth.AuthRoleFilter;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -21,17 +24,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	
-	@Value( "${spring.security.user.name}" )
-    private String username;
-	
-	@Value( "${spring.security.user.password}" )
-    private String password;
+    @Autowired
+    private AuthRoleFilter authRoleFilter;
 
-    @Value( "${spring.security.user.name1}" )
-    private String username1;
-	
-	@Value( "${spring.security.user.password1}" )
-    private String password1;
+    @Value("${auth0.audience}")
+    private String audience;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuer;
 	
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
@@ -47,39 +47,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+
+        // Apply Role Filter 
+        http.cors().and().csrf().disable();
+        http.addFilterBefore(authRoleFilter, UsernamePasswordAuthenticationFilter.class);
         
-        // Basic Auth
-        http.cors().and().csrf().disable().authorizeRequests()
-                .antMatchers("/").permitAll()
-                .anyRequest().authenticated()
-                .and().httpBasic();
-    }
-
-    @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
-        auth.inMemoryAuthentication()
-            .withUser(username).password(password)
-            .authorities("ROLE_ADMIN")
+        // Auth0
+        JwtWebSecurityConfigurer
+            .forRS256(audience, issuer)
+            .configure(http)
+            .authorizeRequests()
+            .antMatchers("/").permitAll()
+            .anyRequest().authenticated()
             .and()
-            .withUser(username1).password(password1)
-            .authorities("ROLE_USER");
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
     }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new PasswordEncoder() {
-
-            @Override
-            public String encode(CharSequence rawPassword) {
-                return rawPassword.toString();
-            }
-
-            @Override
-            public boolean matches(CharSequence rawPassword, String encodedPassword) {
-                return rawPassword.toString().equals(encodedPassword);
-            }
-        };
-    }
-
 }
 
