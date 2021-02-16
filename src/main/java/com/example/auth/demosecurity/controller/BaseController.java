@@ -3,6 +3,7 @@ package com.example.auth.demosecurity.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,13 +18,14 @@ public class BaseController {
         return "Hello World";
     }
 
+    @PreAuthorize("hasRole('USER')")
 	@GetMapping(path="/user", produces=MediaType.APPLICATION_JSON_VALUE)
     public String user(){
         LOG.info("api: user");
         return "Welcome: User";
     }
 	
-
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping(path="/admin", produces=MediaType.APPLICATION_JSON_VALUE)
 	public String admin() {
         LOG.info("api: admin");
